@@ -2,6 +2,8 @@
 name = "wasm"
 version = "0.1.0"
 edition = "2021"
+description = "Nuxt3 with Wasm"
+repository = "https://github.com/inomata137/nuxt-wasm"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
