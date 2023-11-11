@@ -1,21 +1,14 @@
 mod utils;
 
+use js_sys::Math;
+use fixedbitset::FixedBitSet;
 use wasm_bindgen::prelude::*;
-use std::fmt;
-
-#[wasm_bindgen]
-#[repr(u8)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Cell {
-  Dead = 0,
-  Alive = 1,
-}
 
 #[wasm_bindgen]
 pub struct Universe {
   width: u32,
   height: u32,
-  cells: Vec<Cell>,
+  cells: FixedBitSet,
 }
 
 #[wasm_bindgen]
@@ -49,14 +42,14 @@ impl Universe {
         let live_neighbors = self.live_neighbor_count(row, col);
 
         let next_cell = match (self.cells[idx], live_neighbors) {
-          (Cell::Alive, x) if x < 2 => Cell::Dead,
-          (Cell::Alive, 2) | (Cell::Alive, 3) => Cell::Alive,
-          (Cell::Alive, x) if x > 3 => Cell::Dead,
-          (Cell::Dead, 3) => Cell::Alive,
-          (otherwise, _) => otherwise,
+          (true, 2) => true, // keep
+          (true, 3) => true, // keep
+          (true, _) => false, // toggle
+          (false, 3) => true, // toggle
+          (otherwise, _) => otherwise, // keep
         };
 
-        next[idx] = next_cell;
+        next.set(idx, next_cell);
       }
     }
 
@@ -64,27 +57,19 @@ impl Universe {
   }
 
   pub fn new() -> Universe {
-    let width = 512;
-    let height = 256;
-    let cells = (0..width * height)
-      .map(|i| {
-        if i % 2 == 0 || i % 7 == 0 {
-          Cell::Alive
-        } else {
-          Cell::Dead
-        }
-      })
-      .collect();
+    let width = 512u32;
+    let height = 256u32;
+    let size = (width * height) as usize;
+    let mut cells = FixedBitSet::with_capacity(size);
+    for i in 0..size {
+      cells.set(i, Math::random() < 0.5);
+    }
 
     Universe {
       width,
       height,
       cells
     }
-  }
-
-  pub fn render(&self) -> String {
-    self.to_string()
   }
 
   pub fn width(&self) -> u32 {
@@ -95,20 +80,7 @@ impl Universe {
     self.height
   }
 
-  pub fn cells(&self) -> *const Cell {
-    self.cells.as_ptr()
-  }
-}
-
-impl fmt::Display for Universe {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    for line in self.cells.as_slice().chunks(self.width as usize) {
-      for &cell in line {
-        let symbol = if cell == Cell::Dead { '◻' } else { '◼' };
-        write!(f, "{}", symbol).unwrap();
-      }
-      write!(f, "\n").unwrap();
-    }
-    Ok(())
+  pub fn cells(&self) -> *const u32 {
+    self.cells.as_slice().as_ptr()
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import init, { Universe, Cell } from '@/wasm/pkg'
+import init, { Universe } from '@/wasm/pkg'
 
 const canvasRef = ref<HTMLCanvasElement>()
 const frame = ref(0)
@@ -39,9 +39,14 @@ onMounted(async () => {
     ctx.stroke()
   }
 
+  const bitIsSet = (arr: Uint8Array, n: number) => {
+    const mask = 1 << (n % 8)
+    return (arr[Math.floor(n / 8)] & mask) === mask
+  }
+
   const drawCells = () => {
     const cellsPtr = universe.cells()
-    const cells = new Uint8Array(memory.buffer, cellsPtr, width * height)
+    const cells = new Uint8Array(memory.buffer, cellsPtr, width * height / 8)
 
     ctx.beginPath()
 
@@ -49,9 +54,9 @@ onMounted(async () => {
       for (let col = 0; col < width; ++col) {
         const idx = getIdx(row, col)
 
-        ctx.fillStyle = cells[idx] === Cell.Dead
-          ? DEAD_COLOR
-          : ALIVE_COLOR
+        ctx.fillStyle = bitIsSet(cells, idx)
+          ? ALIVE_COLOR
+          : DEAD_COLOR
 
         ctx.fillRect(
           col * (CELL_SIZE + 1) + 1,
