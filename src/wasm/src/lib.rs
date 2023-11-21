@@ -3,12 +3,14 @@ mod utils;
 use js_sys::Math;
 use fixedbitset::FixedBitSet;
 use wasm_bindgen::prelude::*;
+use web_sys::{HtmlCanvasElement, CanvasRenderingContext2d};
 
 #[wasm_bindgen]
 pub struct Universe {
   width: u32,
   height: u32,
   cells: FixedBitSet,
+  context: CanvasRenderingContext2d
 }
 
 #[wasm_bindgen]
@@ -56,9 +58,54 @@ impl Universe {
     self.cells = next;
   }
 
-  pub fn new() -> Universe {
+  pub fn draw(&self) {
+    let ctx = &self.context;
+    ctx.clear_rect(
+      0f64,
+      0f64,
+      (self.width * 2).into(),
+      (self.height * 2).into()
+    );
+    ctx.set_fill_style(&JsValue::from_str("#000000"));
+    ctx.fill_rect(
+      0f64,
+      0f64,
+      (self.width * 2).into(),
+      (self.height * 2).into()
+    );
+    ctx.set_fill_style(&JsValue::from_str("#ffffff"));
+    let size = self.width * self.height;
+    for i in 0..size {
+      let row = i / self.width;
+      let col = i % self.width;
+      let bit = self.cells[i as usize] as bool;
+      if bit {
+        ctx.fill_rect(
+          (col * 2).into(),
+          (row * 2).into(),
+          2f64,
+          2f64
+        );
+      }
+    }
+  }
+
+  pub fn new(id: &str) -> Universe {
     let width = 512u32;
     let height = 256u32;
+
+    let canvas = get_canvas(id);
+
+    canvas.set_width(width * 2);
+    canvas.set_height(height * 2);
+
+    let context = canvas
+      .get_context("2d")
+      .expect("coudn't get context")
+      .expect("no context")
+      .dyn_into::<CanvasRenderingContext2d>()
+      .unwrap();
+
     let size = (width * height) as usize;
     let mut cells = FixedBitSet::with_capacity(size);
     for i in 0..size {
@@ -68,7 +115,8 @@ impl Universe {
     Universe {
       width,
       height,
-      cells
+      cells,
+      context
     }
   }
 
@@ -83,4 +131,14 @@ impl Universe {
   pub fn cells(&self) -> *const u32 {
     self.cells.as_slice().as_ptr()
   }
+}
+
+fn get_canvas(id: &str) -> HtmlCanvasElement {
+  let document = web_sys::window().unwrap().document().unwrap();
+  let canvas = document.get_element_by_id(id).unwrap();
+  let canvas = canvas
+    .dyn_into::<HtmlCanvasElement>()
+    .map_err(|_| ())
+    .unwrap();
+  canvas
 }
