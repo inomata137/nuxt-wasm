@@ -36,29 +36,30 @@ impl Universe {
   }
 
   pub fn tick(&mut self) {
-    let mut next = self.cells.clone();
+    let mut next = FixedBitSet::with_capacity(self.cells.len());
 
     for row in 0..self.height {
       for col in 0..self.width {
         let idx = self.get_index(row, col);
         let live_neighbors = self.live_neighbor_count(row, col);
 
-        let next_cell = match (self.cells[idx], live_neighbors) {
-          (true, 2) => true, // keep
-          (true, 3) => true, // keep
-          (true, _) => false, // toggle
-          (false, 3) => true, // toggle
-          (otherwise, _) => otherwise, // keep
-        };
-
-        next.set(idx, next_cell);
+        if match (self.cells[idx], live_neighbors) {
+          (true, 2) => true,
+          (true, 3) => true,
+          (true, _) => false,
+          (false, 3) => true,
+          (otherwise, _) => otherwise
+        } {
+          next.put(idx);
+        }
       }
     }
 
     self.cells = next;
+    self.draw();
   }
 
-  pub fn draw(&self) {
+  fn draw(&self) {
     let ctx = &self.context;
     ctx.clear_rect(
       0f64,
@@ -118,18 +119,6 @@ impl Universe {
       cells,
       context
     }
-  }
-
-  pub fn width(&self) -> u32 {
-    self.width
-  }
-
-  pub fn height(&self) -> u32 {
-    self.height
-  }
-
-  pub fn cells(&self) -> *const u32 {
-    self.cells.as_slice().as_ptr()
   }
 }
 
